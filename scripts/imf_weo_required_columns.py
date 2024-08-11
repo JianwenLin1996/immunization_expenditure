@@ -70,13 +70,17 @@ def process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(df):
     )
 
 
+def process_zerodose(df):
+    return
+
+
 def main():
     pd.set_option("future.no_silent_downcasting", True)
     pd.set_option("display.max_columns", None)
     cy_imf_weo = pd.read_parquet("data/cy_imf_weo.parquet")
 
     # process_GGX_MinusInterestPayments_LCU_index(df)
-    process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(df=cy_imf_weo)
+    # process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(df=cy_imf_weo)
 
 
 if __name__ == "__main__":
