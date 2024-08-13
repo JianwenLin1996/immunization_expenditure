@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 
@@ -16,10 +17,7 @@ def process_GGX_MinusInterestPayments_LCU_index(df):
         "GGX_MinusInterestPayments_NGDPRPC"
     ].transform(lambda x: 100 * (x / x.iloc[0]))
 
-    print(
-        temp[["country_code", "year", "GGX_MinusInterestPayments_LCU_index"]].head(50)
-    )
-    return
+    return temp[["country_code", "year", "GGX_MinusInterestPayments_LCU_index"]]
 
 
 def process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(df):
@@ -59,19 +57,54 @@ def process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(df):
         df["GGX_MinusInterestPayments_NCU_percapita_rebased"] * df["Implied_FX_Rebase"]
     )
 
-    print(
-        df[
-            [
-                "country_code",
-                "year",
-                "GGX_MinusInterestPayments_ConstantUSD_percapita_rebased",
-            ]
-        ].head(50)
+    return df[
+        [
+            "country_code",
+            "year",
+            "GGX_MinusInterestPayments_ConstantUSD_percapita_rebased",
+        ]
+    ]
+
+
+def process_zerodose_dtpcv1():
+    directory_path = "data"
+
+    parquet_files = [
+        os.path.join(directory_path, file)
+        for file in os.listdir(directory_path)
+        if file.startswith("AD_COVERAGES") and file.endswith(".parquet")
+    ]
+
+    temp_df = []
+    # Iterate over the list of Parquet files and read each into a pandas DataFrame
+    for file in parquet_files:
+        df = pd.read_parquet(file)
+        temp_df.append(df)
+
+    ad_coverages_df = pd.concat(temp_df, ignore_index=True)
+
+    who_dtpcv1year = 2022
+    ad_coverages_df = ad_coverages_df[
+        (ad_coverages_df["YEAR"] == who_dtpcv1year)
+        & (ad_coverages_df["VACCINECODE"] == "DTPCV1")
+        & (ad_coverages_df["COVERAGE_CATEGORY"] == "WUENIC")
+    ]
+
+    # Compute zerodose on just DTPCV1 VACCINECODE line
+    ad_coverages_df["zerodose"] = round(
+        ((100 - ad_coverages_df["PERCENTAGE"]) / 100) * ad_coverages_df["TARGETNUMBER"],
+        0,
+    )
+    ad_coverages_df = ad_coverages_df[
+        ["COUNTRY", "YEAR", "TARGETNUMBER", "PERCENTAGE", "zerodose"]
+    ]
+
+    # Rename 'PERCENTAGE' to 'DTPCV1'
+    ad_coverages_df = ad_coverages_df.rename(
+        columns={"COUNTRY": "country_code", "YEAR": "year", "PERCENTAGE": "DTPCV1"}
     )
 
-
-def process_zerodose(df):
-    return
+    return ad_coverages_df
 
 
 def main():
@@ -79,8 +112,16 @@ def main():
     pd.set_option("display.max_columns", None)
     cy_imf_weo = pd.read_parquet("data/cy_imf_weo.parquet")
 
-    # process_GGX_MinusInterestPayments_LCU_index(df)
-    # process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(df=cy_imf_weo)
+    lcu_df = process_GGX_MinusInterestPayments_LCU_index(df=cy_imf_weo)
+    usd_df = process_GGX_MinusInterestPayments_ConstantUSD_percapita_rebased(
+        df=cy_imf_weo
+    )
+    zerodose_df = process_zerodose_dtpcv1()
+
+    df1 = pd.merge(lcu_df, usd_df, on=["country_code", "year"], how="outer")
+    cy_ie_df = pd.merge(df1, zerodose_df, on=["country_code", "year"], how="outer")
+
+    cy_ie_df.to_parquet(f"data/cy_ie.parquet", engine="pyarrow")
 
 
 if __name__ == "__main__":
