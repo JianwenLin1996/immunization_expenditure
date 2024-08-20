@@ -38,6 +38,49 @@ def nan_or_round(val, multiply100=False, round_val=2):
     )
 
 
+def process_comparator_country_data(
+    df: pd.DataFrame, column_name: str, filename: str, years: list
+):
+    ### COMPARATOR ###
+    comparator_df = (
+        df.sort_values(["year"], ascending=True)
+        .groupby(["WHO_region", "year"])[column_name]
+        .mean()
+    )
+    comparator_dict = {}
+    for (region, year), col in comparator_df.items():
+        if region not in comparator_dict:
+            comparator_dict[region] = {}
+        if year in years:
+            comparator_dict[region][year] = nan_or_round(col)
+    # comparator_json_str = json.dumps(comparator_dict, indent=4)
+    with open(os.path.join("whdh_gold", f"{filename}_region.json"), "w") as json_file:
+        json.dump(comparator_dict, json_file, indent=4)
+
+    ### COUNTRY ###
+    country_df = (
+        df.sort_values(["year"], ascending=True)
+        .groupby(["country", "year"])[column_name]
+        .mean()
+    )
+
+    default_dict = {}
+    for year in years:
+        default_dict[year] = np.nan
+
+    country_dict = {}
+    for (country, year), col in country_df.items():
+        if country not in country_dict:
+            country_dict[country] = (
+                default_dict.copy()
+            )  # need copy() or else all country share the same dict
+        if year in years:
+            country_dict[country][year] = nan_or_round(col)
+    # country_json_str = json.dumps(country_dict, indent=4)
+    with open(os.path.join("whdh_gold", f"{filename}_country.json"), "w") as json_file:
+        json.dump(country_dict, json_file, indent=4)
+
+
 def vaccine_spent_process():
     ad_coverages_df = parquet_to_df("MT_AD_IA2030")
     ad_coverages_df = (
@@ -125,44 +168,9 @@ def vaccine_spent_process():
         immune_exp_df, constant_gni_df, on=["country_code", "year"], how="left"
     )
 
-    ### COMPARATOR ###
-    col_1_vaccine_spent_b_comparator_df = (
-        immune_exp_df.sort_values(["year"], ascending=True)
-        .groupby(["WHO_region", "year"])["TEV"]
-        .mean()
-    )
-    comparator_dict = {}
-    for (region, year), mean_tev in col_1_vaccine_spent_b_comparator_df.items():
-        if region not in comparator_dict:
-            comparator_dict[region] = {}
-        comparator_dict[region][year] = nan_or_round(mean_tev)
-    # comparator_json_str = json.dumps(comparator_dict, indent=4)
-    with open(os.path.join("whdh_gold", "vaccine_spent_region.json"), "w") as json_file:
-        json.dump(comparator_dict, json_file, indent=4)
-
-    ### COUNTRY ###
-    col_1_vaccine_spent_b_country_df = (
-        immune_exp_df.sort_values(["year"], ascending=True)
-        .groupby(["country", "year"])["TEV"]
-        .mean()
-    )
-
-    default_dict = {}
-    for year in range(2018, 2024):  #! year should be made flexible
-        default_dict[year] = np.nan
-
-    country_dict = {}
-    for (country, year), tev in col_1_vaccine_spent_b_country_df.items():
-        if country not in country_dict:
-            country_dict[country] = (
-                default_dict.copy()
-            )  # need this or else all country share the same dict
-        country_dict[country][year] = nan_or_round(tev)
-    # country_json_str = json.dumps(country_dict, indent=4)
-    with open(
-        os.path.join("whdh_gold", "vaccine_spent_country.json"), "w"
-    ) as json_file:
-        json.dump(country_dict, json_file, indent=4)
+    years = [y for y in range(2018, 2024)]
+    process_comparator_country_data(immune_exp_df, "TEV", "vaccine_spent", years)
+    return
 
 
 def risk_opportunity_process():
@@ -210,42 +218,9 @@ def risk_opportunity_process():
         .round(3)
     )
 
-    ### COMPARATOR ###
-    col_1_risk_oppo_b_comparator_BOP_df = (
-        risk_opportunity_df.sort_values(["year"], ascending=True)
-        .groupby(["WHO_region", "year"])["BOP"]
-        .mean()
-    )
-    comparator_dict = {}
-    for (region, year), bop in col_1_risk_oppo_b_comparator_BOP_df.items():
-        if region not in comparator_dict:
-            comparator_dict[region] = {}
-        comparator_dict[region][year] = nan_or_round(bop)
-    # comparator_json_str = json.dumps(comparator_dict, indent=4)
-    with open(os.path.join("whdh_gold", "bop_region.json"), "w") as json_file:
-        json.dump(comparator_dict, json_file, indent=4)
-
-    ### COUNTRY ###
-    col_1_risk_oppo_b_country_BOP_df = (
-        risk_opportunity_df.sort_values(["year"], ascending=True)
-        .groupby(["country", "year"])["BOP"]
-        .mean()
-    )
-
-    default_dict = {}
-    for year in range(2018, 2024):  #! year should be made flexible
-        default_dict[year] = np.nan
-
-    country_dict = {}
-    for (country, year), bop in col_1_risk_oppo_b_country_BOP_df.items():
-        if country not in country_dict:
-            country_dict[country] = (
-                default_dict.copy()
-            )  # need this or else all country share the same dict
-        country_dict[country][year] = nan_or_round(bop)
-    # country_json_str = json.dumps(country_dict, indent=4)
-    with open(os.path.join("whdh_gold", "bop_country.json"), "w") as json_file:
-        json.dump(country_dict, json_file, indent=4)
+    years = [y for y in range(2018, 2024)]  #! year should be made flexible
+    process_comparator_country_data(risk_opportunity_df, "BOP", "bop", years)
+    return
 
 
 def fiscal_distribution_process():
@@ -301,15 +276,169 @@ def fiscal_distribution_process():
     ]
     fiscal_distribution_df["group"] = np.select(conditions, [0, 1, 3, 5], default=5)
 
-    #! post process of fiscal distribution for col_1_risk_oppo_b_country_USD
+    years = [y for y in range(2023, 2030)]  #! year should be made flexible
+    process_comparator_country_data(fiscal_distribution_df, "USD", "usd", years)
+    return
+
+
+def gghed_gge_process():
+    ad_coverages_df = parquet_to_df("MT_AD_IA2030")
+    ad_coverages_df = (
+        ad_coverages_df[ad_coverages_df["TYPE"].isin(["TERI", "TEV", "GERI", "GEV"])]
+        .rename(
+            columns={
+                "COUNTRY": "country_code",
+                "NAMEWORKEN": "country",
+                "WHOREGIONC": "WHO_region",
+                "GAVI_INCOME_STATUS": "GAVI",
+                "YEAR": "year",
+                "TYPE": "vaccine",
+                "VALUE_TRANSFORMED": "expenditure",
+            }
+        )
+        .loc[
+            :,
+            [
+                "country_code",
+                "country",
+                "WHO_region",
+                "GAVI",
+                "year",
+                "vaccine",
+                "expenditure",
+            ],
+        ]
+    )
+    ref_pop_df = parquet_to_df("REF_POPULATION")
+    ref_pop_df = (
+        ref_pop_df[
+            (ref_pop_df["POP_SOURCE_FK"] == "UNPD2022")
+            & (ref_pop_df["GENDER_FK"] == "BOTH")
+            & (ref_pop_df["YEAR"] > 2010)
+            & (ref_pop_df["POP_TYPE_FK"] == "SURVIVING_INFANT")
+        ]
+        .loc[:, ["COUNTRY_FK", "YEAR", "VALUE"]]
+        .rename(
+            columns={
+                "COUNTRY_FK": "country_code",
+                "YEAR": "year",
+                "VALUE": "surviving_infant",
+            }
+        )
+    )
+    ref_finance_df = parquet_to_df("REF_FINANCING")
+    ref_finance_df = (
+        ref_finance_df[
+            ref_finance_df["INDCODE"].isin(
+                [
+                    "LP",
+                    "NGDPD",
+                    "CHE_USD",
+                    "PHC_USD",
+                    "GGHED_USD",
+                    "EXT_USD",
+                    "GGHED_GGE",
+                ]
+            )
+        ]
+        .loc[:, ["COUNTRY", "YEAR", "INDCODE", "VALUE"]]
+        .rename(
+            columns={
+                "COUNTRY": "country_code",
+                "YEAR": "year",
+                "VALUE": "value",
+                "INDCODE": "code",
+            }
+        )
+    )
+
+    df = pd.merge(ad_coverages_df, ref_pop_df, on=["country_code", "year"], how="left")
+    df = pd.merge(df, ref_finance_df, on=["country_code", "year"], how="left")
+    df = (
+        df.astype({"year": int})
+        .replace(update_names.keys(), update_names.values())
+        .round(3)
+    )
+
+    pivot_df_1 = (
+        pd.pivot_table(df, values="value", index=["country", "year"], columns="code")
+        .fillna(0)
+        .reset_index()
+    )
+    pivot_df_2 = (
+        pd.pivot_table(
+            df, values="expenditure", index=["country", "year"], columns="vaccine"
+        )
+        .fillna(0)
+        .reset_index()
+    )
+
+    teri_df = pivot_df_2[["country", "year", "GERI", "TERI"]]
+    teri_df = teri_df.copy()
+    teri_df.loc[:, "vaccine"] = "TERI"
+
+    tev_df = pivot_df_2[["country", "year", "GEV", "TEV"]]
+    tev_df = tev_df.copy()
+    tev_df.loc[:, "vaccine"] = "TEV"
+
+    tmp_df = teri_df.merge(tev_df, on=["country", "year"])
+
+    teri_df = teri_df.rename(columns={"GERI": "GE", "TERI": "TE"})
+    tev_df = tev_df.rename(columns={"GEV": "GE", "TEV": "TE"})
+
+    tmp_df["B"] = tmp_df["TEV"] / tmp_df["TERI"]
+    tmp_df = tmp_df[["country", "year", "B"]]
+
+    te_df = pd.concat([teri_df, tev_df], ignore_index=True)
+    new_df = pivot_df_1.merge(te_df, on=["country", "year"]).merge(
+        df[
+            [
+                "country_code",
+                "year",
+                "country",
+                "WHO_region",
+                "GAVI",
+                "surviving_infant",
+            ]
+        ].drop_duplicates(),
+        on=["country", "year"],
+    )
+    new_df = new_df.merge(tmp_df, on=["country", "year"])
+
+    # # new_df.fillna(0)
+    new_df["C"] = new_df["TE"] / new_df["surviving_infant"]
+    new_df["D"] = new_df["TE"] / new_df["LP"]
+    new_df["E"] = new_df["GE"] / new_df["TE"]
+    new_df["F"] = new_df["TE"] / new_df["NGDPD"]
+    new_df["G"] = new_df["TE"] / new_df["CHE_USD"]
+    new_df["H"] = new_df["TE"] / new_df["PHC_USD"]
+    new_df["I"] = new_df["TE"] / new_df["GGHED_USD"]
+    new_df["J"] = new_df["TE"] / new_df["EXT_USD"]
+    new_df = new_df.replace([np.inf, -np.inf], np.nan)
+    new_df = (
+        new_df.astype({"year": int})
+        .replace(update_names.keys(), update_names.values())
+        .round(3)
+    )
+
+    years = [y for y in range(2018, 2022)]
+    gghed_gge_df = (
+        new_df[["country", "country_code", "WHO_region", "GAVI", "year", "GGHED_GGE"]]
+        .drop_duplicates()
+        .sort_values(by="year")
+    )
+
+    process_comparator_country_data(gghed_gge_df, "GGHED_GGE", "gghed_gge", years)
+    return
 
 
 def main():
     pd.set_option("future.no_silent_downcasting", True)
     pd.set_option("display.max_columns", None)
-    # vaccine_spent_process()
-    # risk_opportunity_process()
+    vaccine_spent_process()
+    risk_opportunity_process()
     fiscal_distribution_process()
+    gghed_gge_process()
 
     return 0
 
