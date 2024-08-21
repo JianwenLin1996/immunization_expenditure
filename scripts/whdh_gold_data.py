@@ -432,13 +432,70 @@ def gghed_gge_process():
     return
 
 
+def fin_sus_process():
+    df = parquet_to_df("MT_AD_IA2030")
+    df = (
+        df[df["TYPE"].isin(["GEV", "TEV"])]
+        .rename(
+            columns={
+                "COUNTRY": "country_code",
+                "NAMEWORKEN": "country",
+                "WHOREGIONC": "WHO_region",
+                "GAVI_INCOME_STATUS": "GAVI",
+                "YEAR": "year",
+                "TYPE": "vaccine",
+                "VALUE_TRANSFORMED": "expenditure",
+            }
+        )
+        .loc[
+            :,
+            [
+                "country_code",
+                "country",
+                "WHO_region",
+                "GAVI",
+                "year",
+                "vaccine",
+                "expenditure",
+            ],
+        ]
+    )
+    gev_df = df.loc[
+        df["vaccine"] == "GEV",
+        ["country_code", "year", "vaccine", "expenditure"],
+    ].rename(columns={"expenditure": "expenditure_gev"})
+    tev_df = df[df["vaccine"] == "TEV"].rename(
+        columns={"expenditure": "expenditure_tev"}
+    )
+    df = pd.merge(tev_df, gev_df, on=["country_code", "year"])
+    df["gev/tev"] = df["expenditure_gev"] / df["expenditure_tev"]
+    df.replace([np.inf, -np.inf], 0, inplace=True)
+
+    conditions = [
+        df["gev/tev"].isna(),
+        df["gev/tev"] <= 0.2,
+        (df["gev/tev"] > 0.2) & (df["gev/tev"] <= 0.4),
+        (df["gev/tev"] > 0.4) & (df["gev/tev"] <= 0.6),
+        (df["gev/tev"] > 0.6) & (df["gev/tev"] <= 0.8),
+        df["gev/tev"] > 0.8,
+    ]
+    df["group"] = np.select(conditions, [0, 1, 2, 3, 4, 5], default=0)
+    df = df.astype({"year": int}).replace(update_names.keys(), update_names.values())
+    df = df.round(4)
+
+    years = [y for y in range(2018, 2024)]
+    process_comparator_country_data(df, "gev/tev", "fin_sus", years)
+    return
+
+
 def main():
     pd.set_option("future.no_silent_downcasting", True)
     pd.set_option("display.max_columns", None)
-    vaccine_spent_process()
-    risk_opportunity_process()
-    fiscal_distribution_process()
-    gghed_gge_process()
+    # vaccine_spent_process()
+    # risk_opportunity_process()
+    # fiscal_distribution_process()
+    # gghed_gge_process()
+    fin_sus_process()
 
     return 0
 
