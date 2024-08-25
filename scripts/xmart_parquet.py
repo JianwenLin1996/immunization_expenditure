@@ -23,7 +23,7 @@ def extract_from_api(xmart):
         "MT_AD_IA2030_FINANCING",
     ]
 
-    start_year = 2024
+    start_year = 2018
     end_year = 2025
     years = list(range(start_year, end_year + 1))
     # years_str = ",".join([str(year) for year in years])

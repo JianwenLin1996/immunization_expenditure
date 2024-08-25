@@ -491,10 +491,10 @@ def fin_sus_process():
 def main():
     pd.set_option("future.no_silent_downcasting", True)
     pd.set_option("display.max_columns", None)
-    # vaccine_spent_process()
-    # risk_opportunity_process()
-    # fiscal_distribution_process()
-    # gghed_gge_process()
+    vaccine_spent_process()
+    risk_opportunity_process()
+    fiscal_distribution_process()
+    gghed_gge_process()
     fin_sus_process()
 
     return 0
