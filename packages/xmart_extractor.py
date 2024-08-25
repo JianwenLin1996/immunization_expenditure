@@ -2,19 +2,22 @@ from azure.identity import ClientSecretCredential
 import requests
 import rdata
 import os
-from dotenv import load_dotenv
+
+# from dotenv import load_dotenv
 
 
 class XmartExtractor:
     def __init__(self):
-        key = rdata.read_rda("./WIISEMART_OData_key.RData")
-        authn = key["authn"]
-        authn_resource = authn["resource"][0]
-        authn_tenant = authn["tenant"][0]
+        # key = rdata.read_rda("./WIISEMART_OData_key.RData")
+        # authn = key["authn"]
+        # authn_resource = authn["resource"][0]
+        # authn_tenant = authn["tenant"][0]
 
-        load_dotenv()
+        # load_dotenv()
         authn_app = os.getenv("AUTHN_APP")
         authn_password = os.getenv("AUTHN_PASSWORD")
+        authn_resource = os.getenv("AUTHN_RESOURCE")
+        authn_tenant = os.getenv("AUTHN_TENANT")
 
         credential = ClientSecretCredential(
             tenant_id=authn_tenant, client_id=authn_app, client_secret=authn_password
