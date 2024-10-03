@@ -41,7 +41,7 @@ def nan_or_round(val, multiply100=False, round_val=2):
 def process_comparator_country_data(
     df: pd.DataFrame, column_name: str, filename: str, years: list
 ):
-    ### COMPARATOR ###
+    ### WHO REGION COMPARATOR ###
     comparator_df = (
         df.sort_values(["year"], ascending=True)
         .groupby(["WHO_region", "year"])[column_name]
@@ -55,6 +55,22 @@ def process_comparator_country_data(
             comparator_dict[region][year] = nan_or_round(col)
     # comparator_json_str = json.dumps(comparator_dict, indent=4)
     with open(os.path.join("whdh_gold", f"{filename}_region.json"), "w") as json_file:
+        json.dump(comparator_dict, json_file, indent=4)
+
+    ### GAVI COMPARATOR ###
+    comparator_df = (
+        df.sort_values(["year"], ascending=True)
+        .groupby(["GAVI", "year"])[column_name]
+        .mean()
+    )
+    comparator_dict = {}
+    for (gavi, year), col in comparator_df.items():
+        if gavi not in comparator_dict:
+            comparator_dict[gavi] = {}
+        if year in years:
+            comparator_dict[gavi][year] = nan_or_round(col)
+    # comparator_json_str = json.dumps(comparator_dict, indent=4)
+    with open(os.path.join("whdh_gold", f"{filename}_gavi.json"), "w") as json_file:
         json.dump(comparator_dict, json_file, indent=4)
 
     ### COUNTRY ###
