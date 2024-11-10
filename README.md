@@ -13,7 +13,7 @@ input: cy_imf_weo.parquet
 output: cy_ie.parquet
 remark: this file creates LCU, USD_percapita, DTPCV1
 
-whidh_gold_data.py
+whdh_gold_data.py
 input: all parquet files
 output: all json files inside whdh_gold
 remark: this file creates json file for charts from all parquet files

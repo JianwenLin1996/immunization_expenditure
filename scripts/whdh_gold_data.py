@@ -498,6 +498,7 @@ def fin_sus_process():
     df["group"] = np.select(conditions, [0, 1, 2, 3, 4, 5], default=0)
     df = df.astype({"year": int}).replace(update_names.keys(), update_names.values())
     df = df.round(4)
+    df["gev/tev"] = df["gev/tev"] * 100  #! This line change portion to percentage
 
     years = [y for y in range(2018, 2024)]
     process_comparator_country_data(df, "gev/tev", "fin_sus", years)
